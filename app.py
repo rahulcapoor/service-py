@@ -9,11 +9,14 @@ import datetime
 import clr
 from charges import CalculateCharges
 import constants
-
+from flask_cors import CORS
+from fetchFrame import fetch
+import Option
 
 ALLOWED_EXTENSIONS = set(['csv'])
 optionExtensionsToCheck = ('0PE', '0CE', '5PE', '5CE')
 app = Flask(__name__)
+CORS(app)
 app.secret_key = "super secret key"
 
 @app.route('/', methods=['GET'])
@@ -53,6 +56,23 @@ def brokerage():
 @app.route('/fnostocks', methods=['GET'])
 def NiftyfnoStockNames():
     return jsonify(constants.NIFTY_FNO_STOCKS)
+
+
+@app.route('/optionchain/<underlying>/<optiontype>', methods=['GET'])
+def getOptionChain(underlying, optiontype):   
+     
+    queryStr = ''' set nocount on  
+                    select *
+                    from OptionChain where underlying = '{}'and OptionType = '{}'
+                    order by DownloadDate desc, openInterest desc, changeinOpenInterest                   
+                    ''' 
+                    
+    query = queryStr.format(underlying, optiontype, optiontype)
+  
+    df = fetch(query)
+    result = Option.GetMaximumCallAtStrike(df);
+    
+    return Response(df.to_json(orient='records'), mimetype="application/json")  
 
 def allowed_file(filename):
     return '.' in filename and \
